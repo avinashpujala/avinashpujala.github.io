@@ -14264,12 +14264,20 @@ a.anchor-link {
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[2]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[267]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">Counter</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="o">!</span>pip install matplotlib
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 </pre></div>
 
      </div>
@@ -14285,10 +14293,10 @@ a.anchor-link {
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[119]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># List of all restaurant categories</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Restaurant categories</span>
 <span class="n">R</span> <span class="o">=</span> <span class="p">[</span>
     <span class="s2">&quot;mexican&quot;</span><span class="p">,</span> 
      <span class="s2">&quot;indian&quot;</span><span class="p">,</span> 
@@ -14314,35 +14322,41 @@ a.anchor-link {
 </div>
 <div class="jp-Cell-inputWrapper"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Compute-weights-for-example-trips"><em>Compute weights for example trips</em><a class="anchor-link" href="#Compute-weights-for-example-trips">&#182;</a></h2><h3 id="$k:-=--\textrm{-distance-from-last-trip}$">$k: =  \textrm{ distance from last trip}$<a class="anchor-link" href="#$k:-=--\textrm{-distance-from-last-trip}$">&#182;</a></h3><h3 id="$k-=-0-\Rightarrow-\textrm{-last-trip,-}$">$k = 0 \Rightarrow \textrm{ last trip, }$<a class="anchor-link" href="#$k-=-0-\Rightarrow-\textrm{-last-trip,-}$">&#182;</a></h3><h3 id="$k-=-4-\Rightarrow-4-\textrm{-trips-before-last-trip}$">$k = 4 \Rightarrow 4 \textrm{ trips before last trip}$<a class="anchor-link" href="#$k-=-4-\Rightarrow-4-\textrm{-trips-before-last-trip}$">&#182;</a></h3>
+<h2 id="Compute-weights-for-example-trips"><em>Compute weights for example trips</em><a class="anchor-link" href="#Compute-weights-for-example-trips">&#182;</a></h2><p>$k: =  \textrm{ distance from last trip}$</p>
+<p>$k = 0 \Rightarrow \textrm{ last trip, }$</p>
+<p>$k = 4 \Rightarrow 4 \textrm{ trips before last trip}$</p>
+<h3 id="Formula:">Formula:<a class="anchor-link" href="#Formula:">&#182;</a></h3><p>$ P_k = \max(\textrm{scalingFactor}^{k}-\textrm{offset}, 0) \textrm{ where } scalingFactor &lt; 1$</p>
+
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[207]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[32]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Scaling factor</span>
-<span class="n">sf</span> <span class="o">=</span> <span class="mf">0.5</span>
-<span class="n">offset</span> <span class="o">=</span> <span class="mf">0.1</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Scaling factor &amp; offset</span>
+<span class="n">sf</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="c1"># Base of exponential decrease in influence of older trips</span>
+<span class="n">offset</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="c1"># Offset from probability of 1</span>
 
 <span class="c1"># Quiz and trip-based lists</span>
 <span class="n">Q</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
 
-<span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mexican&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">,</span> <span class="s2">&quot;sandwiches&quot;</span><span class="p">,</span> <span class="s2">&quot;chinese&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">]</span>
+<span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mexican&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">,</span> <span class="s2">&quot;sandwiches&quot;</span><span class="p">,</span> <span class="s2">&quot;chinese&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">]</span> <span class="c1"># Last quiz</span>
 
-<span class="n">Q</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mexican&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">,</span> <span class="s2">&quot;sandwiches&quot;</span><span class="p">,</span> <span class="s2">&quot;burgers&quot;</span><span class="p">,</span> <span class="s2">&quot;vegetarian&quot;</span><span class="p">]</span>
+<span class="n">Q</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mexican&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">,</span> <span class="s2">&quot;sandwiches&quot;</span><span class="p">,</span> <span class="s2">&quot;burgers&quot;</span><span class="p">,</span> <span class="s2">&quot;vegetarian&quot;</span><span class="p">]</span> <span class="c1"># Quiz before last</span>
 
-<span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;breakfast&quot;</span><span class="p">,</span> <span class="s2">&quot;coffee or tea&quot;</span><span class="p">,</span> <span class="s2">&quot;noodles&quot;</span><span class="p">,</span> <span class="s2">&quot;japanese&quot;</span><span class="p">,</span> <span class="s2">&quot;wineries or breweries&quot;</span><span class="p">]</span>
+<span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;breakfast&quot;</span><span class="p">,</span> <span class="s2">&quot;coffee or tea&quot;</span><span class="p">,</span> <span class="s2">&quot;noodles&quot;</span><span class="p">,</span> <span class="s2">&quot;japanese&quot;</span><span class="p">,</span> <span class="s2">&quot;wineries or breweries&quot;</span><span class="p">]</span> <span class="c1"># Last trip</span>
+<span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;coffee or tea&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">,</span> <span class="s2">&quot;chinese&quot;</span><span class="p">,</span> <span class="s2">&quot;wineries or breweries&quot;</span><span class="p">]</span> <span class="c1"># Trip before last</span>
 
-<span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;coffee or tea&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">,</span> <span class="s2">&quot;chinese&quot;</span><span class="p">,</span> <span class="s2">&quot;wineries or breweries&quot;</span><span class="p">]</span>
-
-<span class="n">T</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;burgers&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">]</span>
+<span class="n">T</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;burgers&quot;</span><span class="p">,</span> <span class="s2">&quot;pizza&quot;</span><span class="p">,</span> <span class="s2">&quot;indian&quot;</span><span class="p">]</span> <span class="c1"># 2 trips before last</span>
 
 <span class="c1"># Compute probabilities (weights)</span>
-<span class="n">p</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">p</span> <span class="o">=</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]))}</span> <span class="c1"># Probabilities for quiz categories</span>
 <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">T</span><span class="p">:</span>
-    <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sf</span><span class="o">**</span><span class="n">k</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">k</span><span class="p">])))</span><span class="o">-</span><span class="n">offset</span>
+    <span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="n">sf</span><span class="o">**</span><span class="n">k</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">k</span><span class="p">])))</span><span class="o">-</span><span class="n">offset</span><span class="p">))</span> <span class="c1"># Probabilities for categories in the k-th trip    </span>
+<span class="n">T</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># Generalize last quiz as k = -1</span>
+    
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sampling probabilities for categories in last quiz and the different trips&quot;</span><span class="p">)</span>
 <span class="n">p</span>
 </pre></div>
 
@@ -14359,15 +14373,28 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 
     
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[207]:</div>
+    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+
+
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
+<pre>Sampling probabilities for categories in last quiz and the different trips
+</pre>
+</div>
+</div>
+
+<div class="jp-OutputArea-child">
+
+    
+    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[32]:</div>
 
 
 
 
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain">
-<pre>{0: array([0.9, 0.9, 0.9, 0.9, 0.9]),
- 1: array([0.4, 0.4, 0.4, 0.4]),
- 2: array([0.15, 0.15, 0.15])}</pre>
+<pre>{-1: array([1., 1., 1., 1., 1.]),
+ 0: [0.9, 0.9, 0.9, 0.9, 0.9],
+ 1: [0.4, 0.4, 0.4, 0.4],
+ 2: [0.15, 0.15, 0.15]}</pre>
 </div>
 
 </div>
@@ -14384,7 +14411,7 @@ a.anchor-link {
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[205]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[34]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">T_all</span><span class="p">,</span> <span class="n">p_all</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
@@ -14392,9 +14419,7 @@ a.anchor-link {
     <span class="n">T_all</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
     <span class="n">p_all</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
 <span class="n">trip_num</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">T</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">T</span><span class="p">[</span><span class="n">k</span><span class="p">]]</span>
-<span class="n">T_all</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<span class="n">trip_num</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span><span class="o">*-</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">p_all</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span><span class="o">*</span><span class="mi">1</span><span class="p">)</span>
+
 <span class="n">dic</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s1">&#39;food_category&#39;</span><span class="p">:</span> <span class="n">T_all</span><span class="p">,</span>
     <span class="s1">&#39;trip_num&#39;</span><span class="p">:</span> <span class="n">trip_num</span><span class="p">,</span>
@@ -14417,7 +14442,7 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 
     
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[205]:</div>
+    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[34]:</div>
 
 
 
@@ -14449,103 +14474,103 @@ a.anchor-link {
     <tr>
       <th>16</th>
       <td>pizza</td>
-      <td>-1.0</td>
+      <td>-1</td>
       <td>1.00</td>
     </tr>
     <tr>
       <th>14</th>
       <td>sandwiches</td>
-      <td>-1.0</td>
+      <td>-1</td>
       <td>1.00</td>
     </tr>
     <tr>
       <th>13</th>
       <td>indian</td>
-      <td>-1.0</td>
+      <td>-1</td>
       <td>1.00</td>
     </tr>
     <tr>
       <th>12</th>
       <td>mexican</td>
-      <td>-1.0</td>
+      <td>-1</td>
       <td>1.00</td>
     </tr>
     <tr>
       <th>15</th>
       <td>chinese</td>
-      <td>-1.0</td>
+      <td>-1</td>
       <td>1.00</td>
     </tr>
     <tr>
       <th>0</th>
       <td>breakfast</td>
-      <td>0.0</td>
+      <td>0</td>
       <td>0.90</td>
     </tr>
     <tr>
       <th>4</th>
       <td>wineries or breweries</td>
-      <td>0.0</td>
+      <td>0</td>
       <td>0.90</td>
     </tr>
     <tr>
       <th>3</th>
       <td>japanese</td>
-      <td>0.0</td>
+      <td>0</td>
       <td>0.90</td>
     </tr>
     <tr>
       <th>2</th>
       <td>noodles</td>
-      <td>0.0</td>
+      <td>0</td>
       <td>0.90</td>
     </tr>
     <tr>
       <th>1</th>
       <td>coffee or tea</td>
-      <td>0.0</td>
+      <td>0</td>
       <td>0.90</td>
     </tr>
     <tr>
       <th>6</th>
       <td>pizza</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>0.40</td>
     </tr>
     <tr>
       <th>7</th>
       <td>chinese</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>0.40</td>
     </tr>
     <tr>
       <th>5</th>
       <td>coffee or tea</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>0.40</td>
     </tr>
     <tr>
       <th>8</th>
       <td>wineries or breweries</td>
-      <td>1.0</td>
+      <td>1</td>
       <td>0.40</td>
     </tr>
     <tr>
       <th>9</th>
       <td>burgers</td>
-      <td>2.0</td>
+      <td>2</td>
       <td>0.15</td>
     </tr>
     <tr>
       <th>10</th>
       <td>pizza</td>
-      <td>2.0</td>
+      <td>2</td>
       <td>0.15</td>
     </tr>
     <tr>
       <th>11</th>
       <td>indian</td>
-      <td>2.0</td>
+      <td>2</td>
       <td>0.15</td>
     </tr>
   </tbody>
@@ -14562,12 +14587,12 @@ a.anchor-link {
 </div>
 <div class="jp-Cell-inputWrapper"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Take-past-two-quiz-results-into-account-and-downweight-categories-in-the-last-quiz-and-not-in-the-one-before"><em>Take past two quiz results into account and downweight categories in the last quiz and not in the one before</em><a class="anchor-link" href="#Take-past-two-quiz-results-into-account-and-downweight-categories-in-the-last-quiz-and-not-in-the-one-before">&#182;</a></h2>
+<h2 id="Look-at-the-last-2-quizzes-and-downweight-categories-that-were-not-in-the-last-quiz,-but-in-the-one-before"><em>Look at the last 2 quizzes and downweight categories that were not in the last quiz, but in the one before</em><a class="anchor-link" href="#Look-at-the-last-2-quizzes-and-downweight-categories-that-were-not-in-the-last-quiz,-but-in-the-one-before">&#182;</a></h2>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[214]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[35]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Scaling factory by which to downweight categories removed in the last quiz</span>
@@ -14613,7 +14638,7 @@ Rows with downgraded probabilities based on quiz removal
 <div class="jp-OutputArea-child">
 
     
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[214]:</div>
+    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[35]:</div>
 
 
 
@@ -14646,7 +14671,7 @@ Rows with downgraded probabilities based on quiz removal
     <tr>
       <th>9</th>
       <td>burgers</td>
-      <td>2.0</td>
+      <td>2</td>
       <td>0.15</td>
       <td>0.075</td>
     </tr>
@@ -14669,21 +14694,48 @@ Rows with downgraded probabilities based on quiz removal
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[221]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[252]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">n</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="k">def</span> <span class="nf">prob_sample</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
-    <span class="n">food_categories</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;food_category&#39;</span><span class="p">][</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;prob_new&#39;</span><span class="p">]</span><span class="o">&gt;=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))])</span>    
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">food_categories</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
-        <span class="n">recos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">food_categories</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">recos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">food_categories</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">recos</span>
 
+<span class="k">def</span> <span class="nf">prob_sample</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">grouped</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;food_category&#39;</span><span class="p">)[</span><span class="s1">&#39;prob_new&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">grouped</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">probs</span> <span class="o">=</span> <span class="n">probs</span><span class="o">/</span><span class="n">probs</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">food_categories</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">grouped</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">food_categories</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">food_categories</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">probs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">food_categories</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">probs</span><span class="p">)</span>        
+    <span class="k">return</span> <span class="n">sample</span>
+
+<span class="n">recos</span><span class="p">,</span> <span class="n">recos_all</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sample # </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> : </span><span class="si">{</span><span class="n">prob_sample</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">recos_</span> <span class="o">=</span> <span class="n">prob_sample</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">recos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">recos_</span><span class="p">)</span>
+    <span class="n">recos_all</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">recos_</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sample # </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> : </span><span class="si">{</span><span class="n">recos_</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">dic</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recos_all</span><span class="p">:</span>
+    <span class="n">dic</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="n">foo</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">dic</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">dic</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">dic_sorted</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">foo</span><span class="p">:</span>
+    <span class="n">dic_sorted</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
     
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Categories sorted by frequency&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">dic_sorted</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="n">T_imp</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Last quiz and trip categories = </span><span class="se">\n</span><span class="s2"> </span><span class="si">{</span><span class="n">T_imp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">grouped</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;food_category&#39;</span><span class="p">)[</span><span class="s1">&#39;prob_new&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">grouped</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+<span class="n">probs</span> <span class="o">=</span> <span class="n">probs</span><span class="o">/</span><span class="n">probs</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+<span class="n">food_categories</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">grouped</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 </pre></div>
 
      </div>
@@ -14703,13 +14755,89 @@ Rows with downgraded probabilities based on quiz removal
 
 
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>Sample # 1 : [&#39;japanese&#39; &#39;sandwiches&#39; &#39;mexican&#39; &#39;wineries or breweries&#39; &#39;chinese&#39;]
-Sample # 2 : [&#39;breakfast&#39; &#39;chinese&#39; &#39;indian&#39; &#39;coffee or tea&#39; &#39;pizza&#39;]
-Sample # 3 : [&#39;noodles&#39; &#39;mexican&#39; &#39;pizza&#39; &#39;chinese&#39; &#39;indian&#39;]
-Sample # 4 : [&#39;breakfast&#39; &#39;coffee or tea&#39; &#39;wineries or breweries&#39; &#39;chinese&#39; &#39;noodles&#39;]
-Sample # 5 : [&#39;sandwiches&#39; &#39;coffee or tea&#39; &#39;noodles&#39; &#39;chinese&#39; &#39;indian&#39;]
+<pre>Sample # 1 : [&#39;wineries or breweries&#39; &#39;noodles&#39; &#39;mexican&#39; &#39;coffee or tea&#39; &#39;breakfast&#39;]
+Sample # 2 : [&#39;indian&#39; &#39;mexican&#39; &#39;wineries or breweries&#39; &#39;japanese&#39; &#39;pizza&#39;]
+Sample # 3 : [&#39;wineries or breweries&#39; &#39;indian&#39; &#39;sandwiches&#39; &#39;coffee or tea&#39; &#39;pizza&#39;]
+Sample # 4 : [&#39;mexican&#39; &#39;chinese&#39; &#39;indian&#39; &#39;pizza&#39; &#39;japanese&#39;]
+Sample # 5 : [&#39;wineries or breweries&#39; &#39;indian&#39; &#39;pizza&#39; &#39;chinese&#39; &#39;noodles&#39;]
+
+Categories sorted by frequency
+{
+  &#34;wineries or breweries&#34;: 4,
+  &#34;indian&#34;: 4,
+  &#34;pizza&#34;: 4,
+  &#34;mexican&#34;: 3,
+  &#34;noodles&#34;: 2,
+  &#34;coffee or tea&#34;: 2,
+  &#34;japanese&#34;: 2,
+  &#34;chinese&#34;: 2,
+  &#34;breakfast&#34;: 1,
+  &#34;sandwiches&#34;: 1
+}
+
+Last quiz and trip categories = 
+ {&#39;sandwiches&#39;, &#39;coffee or tea&#39;, &#39;mexican&#39;, &#39;wineries or breweries&#39;, &#39;chinese&#39;, &#39;indian&#39;, &#39;pizza&#39;}
 </pre>
 </div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+<div class="jp-Cell-inputWrapper"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<h2 id="Simulation">Simulation<a class="anchor-link" href="#Simulation">&#182;</a></h2>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[298]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+     <div class="CodeMirror cm-s-jupyter">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">n_iter</span> <span class="o">=</span> <span class="mi">500</span>
+<span class="n">dic</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_iter</span><span class="p">):</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">prob_sample</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">count_</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+        <span class="n">count</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">count_</span><span class="p">)</span>
+<span class="n">keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">count</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">count_sorted</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+    <span class="n">count_sorted</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">count_sorted</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">count_sorted</span><span class="o">.</span><span class="n">values</span><span class="p">());</span>
+</pre></div>
+
+     </div>
+</div>
+</div>
+</div>
+
+<div class="jp-Cell-outputWrapper">
+
+
+<div class="jp-OutputArea jp-Cell-outputArea">
+
+<div class="jp-OutputArea-child">
+
+    
+    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+
+
+
+
+<div class="jp-RenderedImage jp-OutputArea-output ">
+<img src="data:image/png;base64,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
+"
+>
+</div>
+
 </div>
 
 </div>
